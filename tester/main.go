@@ -13,11 +13,11 @@ func main() {
 
 	flag.Parse()
 
-	carbonlink, _ := NewCarbonlink(linkAddress)
-	defer carbonlink.Close()
+	link, _ := carbonlink.NewCarbonlink(linkAddress)
+	defer link.Close()
 
-	carbonlink.SendRequest(metricName)
-	reply := carbonlink.GetReply()
+	link.SendRequest(metricName)
+	reply := link.GetReply()
 
 	if len(reply.Datapoints) > 0 {
 		fmt.Println(reply.Datapoints[0])
