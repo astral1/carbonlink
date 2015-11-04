@@ -1,11 +1,9 @@
-package main
+package carbonlink
 
 import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
-	"flag"
-	"fmt"
 	"net"
 
 	"github.com/hydrogen18/stalecucumber"
@@ -87,21 +85,4 @@ func (cl *Carbonlink) GetReply() *CarbonlinkReply {
 
 func (cl *Carbonlink) Close() {
 	cl.Conn.Close()
-}
-
-func main() {
-	metricName := flag.String("name", "", "metric full name")
-	linkAddress := flag.String("host", "127.0.0.1:7002", "carbonlink tcp address")
-
-	flag.Parse()
-
-	carbonlink, _ := NewCarbonlink(linkAddress)
-	defer carbonlink.Close()
-
-	carbonlink.SendRequest(metricName)
-	reply := carbonlink.GetReply()
-
-	if len(reply.Datapoints) > 0 {
-		fmt.Println(reply.Datapoints[0])
-	}
 }
