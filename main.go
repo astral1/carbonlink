@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 
-	"gopkg.in/astral1/carbonlink/client"
+	"github.com/astral1/carbonlink/client"
 )
 
 func main() {
@@ -13,7 +13,11 @@ func main() {
 
 	flag.Parse()
 
-	link, _ := carbonlink.NewCarbonlink(linkAddress)
+	link, err := carbonlink.NewCarbonlink(linkAddress)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 	defer link.Close()
 
 	link.SendRequest(metricName)
