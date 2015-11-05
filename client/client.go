@@ -1,4 +1,4 @@
-package carbonlink
+package client
 
 import (
 	"bufio"

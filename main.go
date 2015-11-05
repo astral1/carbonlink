@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/astral1/carbonlink"
+	"gopkg.in/astral1/carbonlink/client"
 )
 
 func main() {
