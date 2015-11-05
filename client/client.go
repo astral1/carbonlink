@@ -52,9 +52,7 @@ type Carbonlink struct {
 func NewCarbonlink(address *string) (*Carbonlink, error) {
 	tcpAddress, _ := net.ResolveTCPAddr("tcp", *address)
 	conn, err := net.DialTCP("tcp", nil, tcpAddress)
-	if err == nil {
-		defer conn.Close()
-	} else {
+	if err != nil {
 		return nil, err
 	}
 

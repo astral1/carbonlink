@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/astral1/carbonlink/client"
+	carbonlink "github.com/astral1/carbonlink/client"
 )
 
 func main() {
@@ -24,6 +24,6 @@ func main() {
 	reply := link.GetReply()
 
 	if len(reply.Datapoints) > 0 {
-		fmt.Println(reply.Datapoints[0])
+		fmt.Println(reply.Datapoints)
 	}
 }
