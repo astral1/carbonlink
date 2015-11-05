@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"net"
+	"sync"
 
 	"github.com/hydrogen18/stalecucumber"
 )
@@ -12,8 +13,6 @@ import (
 type CarbonlinkRequest struct {
 	Type   string
 	Metric string
-	Key    string
-	Value  string
 }
 
 func NewEmptyCarbonlinkRequest() *CarbonlinkRequest {
@@ -36,8 +35,32 @@ func (req *CarbonlinkRequest) Build() []byte {
 	return requestBuf.Bytes()
 }
 
+type CarbonlinkPoints struct {
+	Datapoints map[int]float64
+	From       int
+	Until      int
+	Step       int
+}
+
+func NewCarbonlinkPoints(step int) *CarbonlinkPoints {
+	return &CarbonlinkPoints{Step: step, Datapoints: make(map[int]float64)}
+}
+
+func (p *CarbonlinkPoints) ConvertFrom(reply *CarbonlinkReply) {
+	for index, point := range reply.Datapoints {
+		bucket := (int(point[0].(int64))/60 + 1) * 60
+		value := point[1].(float64)
+
+		p.Datapoints[bucket] = value
+		p.Until = bucket
+		if index == 0 {
+			p.From = bucket
+		}
+	}
+}
+
 type CarbonlinkReply struct {
-	Datapoints []interface{}
+	Datapoints [][]interface{}
 }
 
 func NewCarbonlinkReply() *CarbonlinkReply {
@@ -45,18 +68,21 @@ func NewCarbonlinkReply() *CarbonlinkReply {
 }
 
 type Carbonlink struct {
-	Address *net.TCPAddr
-	Conn    *net.TCPConn
+	Address  *net.TCPAddr
+	Conn     *net.TCPConn
+	maxUse   int32
+	useCount int32
+	mutex    *sync.Mutex
 }
 
-func NewCarbonlink(address *string) (*Carbonlink, error) {
+func NewCarbonlink(address *string, ttl int32) (*Carbonlink, error) {
 	tcpAddress, _ := net.ResolveTCPAddr("tcp", *address)
 	conn, err := net.DialTCP("tcp", nil, tcpAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Carbonlink{Address: tcpAddress, Conn: conn}, nil
+	return &Carbonlink{Address: tcpAddress, Conn: conn, maxUse: ttl, useCount: 0, mutex: &sync.Mutex{}}, nil
 }
 
 func (cl *Carbonlink) SendRequest(name *string) {
@@ -81,6 +107,26 @@ func (cl *Carbonlink) GetReply() *CarbonlinkReply {
 	return reply
 }
 
+func (cl *Carbonlink) Probe(name string, step int) *CarbonlinkPoints {
+	cl.SendRequest(&name)
+	reply := cl.GetReply()
+
+	points := NewCarbonlinkPoints(step)
+	points.ConvertFrom(reply)
+	return points
+}
+
 func (cl *Carbonlink) Close() {
 	cl.Conn.Close()
+}
+
+func (cl *Carbonlink) Refresh() {
+	cl.mutex.Lock()
+	cl.useCount = cl.useCount + 1
+	if cl.useCount == cl.maxUse {
+		cl.Conn.Close()
+		cl.Conn, _ = net.DialTCP("tcp", nil, cl.Address)
+		cl.useCount = 0
+	}
+	cl.mutex.Unlock()
 }
