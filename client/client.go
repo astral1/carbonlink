@@ -48,7 +48,7 @@ func NewCarbonlinkPoints(step int) *CarbonlinkPoints {
 
 func (p *CarbonlinkPoints) ConvertFrom(reply *CarbonlinkReply) {
 	for index, point := range reply.Datapoints {
-		bucket := (int(point[0].(int64))/60 + 1) * 60
+		bucket := (int(point[0].(int64))/p.Step + 1) * p.Step
 		value := point[1].(float64)
 
 		p.Datapoints[bucket] = value
