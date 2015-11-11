@@ -13,7 +13,7 @@ func main() {
 
 	flag.Parse()
 
-	link, err := carbonlink.NewCarbonlink(linkAddress, 10)
+	link, err := carbonlink.NewCarbonlink(linkAddress)
 	if err != nil {
 		fmt.Println(err)
 		return

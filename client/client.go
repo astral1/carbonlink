@@ -68,21 +68,19 @@ func NewCarbonlinkReply() *CarbonlinkReply {
 }
 
 type Carbonlink struct {
-	Address  *net.TCPAddr
-	Conn     *net.TCPConn
-	maxUse   int32
-	useCount int32
-	mutex    *sync.Mutex
+	Address *net.TCPAddr
+	Conn    *net.TCPConn
+	mutex   *sync.Mutex
 }
 
-func NewCarbonlink(address *string, ttl int32) (*Carbonlink, error) {
+func NewCarbonlink(address *string) (*Carbonlink, error) {
 	tcpAddress, _ := net.ResolveTCPAddr("tcp", *address)
 	conn, err := net.DialTCP("tcp", nil, tcpAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Carbonlink{Address: tcpAddress, Conn: conn, maxUse: ttl, useCount: 0, mutex: &sync.Mutex{}}, nil
+	return &Carbonlink{Address: tcpAddress, Conn: conn, mutex: &sync.Mutex{}}, nil
 }
 
 func (cl *Carbonlink) SendRequest(name *string) {
