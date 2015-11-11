@@ -83,6 +83,17 @@ func NewCarbonlink(address *string) (*Carbonlink, error) {
 	return &Carbonlink{Address: tcpAddress, Conn: conn, mutex: &sync.Mutex{}}, nil
 }
 
+func (cl *Carbonlink) IsValid() bool {
+	testName := ""
+	cl.SendRequest(&testName)
+	var replyLength uint32
+	bufferdConn := bufio.NewReader(cl.Conn)
+
+	binary.Read(bufferdConn, binary.BigEndian, &replyLength)
+
+	return replyLength != 0
+}
+
 func (cl *Carbonlink) SendRequest(name *string) {
 	payload := NewCarbonlinkRequest(name)
 
