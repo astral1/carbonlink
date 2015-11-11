@@ -20,9 +20,12 @@ func main() {
 	}
 	defer link.Close()
 
-	reply := link.Probe(*metricName, 60)
+	reply, ok := link.Probe(*metricName, 60)
 
-	if len(reply.Datapoints) > 0 {
-		fmt.Println(reply)
+	if !ok {
+		fmt.Println("link lost")
+		return
 	}
+
+	fmt.Println(reply)
 }

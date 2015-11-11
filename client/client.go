@@ -91,12 +91,16 @@ func (cl *Carbonlink) SendRequest(name *string) {
 	cl.Conn.Write(payload.Build())
 }
 
-func (cl *Carbonlink) GetReply() *CarbonlinkReply {
+func (cl *Carbonlink) GetReply() (*CarbonlinkReply, bool) {
 	var replyLength uint32
 	var replyBytes []byte
 	bufferdConn := bufio.NewReader(cl.Conn)
 
 	binary.Read(bufferdConn, binary.BigEndian, &replyLength)
+
+	if replyLength == 0 {
+		return nil, false
+	}
 
 	replyBytes = make([]byte, replyLength)
 	binary.Read(bufferdConn, binary.BigEndian, replyBytes)
@@ -104,16 +108,24 @@ func (cl *Carbonlink) GetReply() *CarbonlinkReply {
 	reply := NewCarbonlinkReply()
 	stalecucumber.UnpackInto(reply).From(stalecucumber.Unpickle(bytes.NewReader(replyBytes)))
 
-	return reply
+	return reply, true
 }
 
-func (cl *Carbonlink) Probe(name string, step int) *CarbonlinkPoints {
+func (cl *Carbonlink) Probe(name string, step int) (*CarbonlinkPoints, bool) {
 	cl.SendRequest(&name)
-	reply := cl.GetReply()
+	reply, ok := cl.GetReply()
 
+	if !ok {
+		return nil, false
+	}
 	points := NewCarbonlinkPoints(step)
 	points.ConvertFrom(reply)
-	return points
+	return points, true
+}
+
+func (cl *Carbonlink) RefreshAndRetry(name string, step int) (*CarbonlinkPoints, bool) {
+	cl.Refresh()
+	return cl.Probe(name, step)
 }
 
 func (cl *Carbonlink) Close() {
@@ -122,11 +134,7 @@ func (cl *Carbonlink) Close() {
 
 func (cl *Carbonlink) Refresh() {
 	cl.mutex.Lock()
-	cl.useCount = cl.useCount + 1
-	if cl.useCount == cl.maxUse {
-		cl.Conn.Close()
-		cl.Conn, _ = net.DialTCP("tcp", nil, cl.Address)
-		cl.useCount = 0
-	}
+	cl.Conn.Close()
+	cl.Conn, _ = net.DialTCP("tcp", nil, cl.Address)
 	cl.mutex.Unlock()
 }
