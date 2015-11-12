@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"net"
-	"sync"
 	"time"
 
 	"github.com/hydrogen18/stalecucumber"
@@ -72,7 +71,6 @@ type Carbonlink struct {
 	Address *net.TCPAddr
 	Conn    *net.TCPConn
 	timeout time.Duration
-	mutex   *sync.Mutex
 }
 
 func NewCarbonlink(address *string) (*Carbonlink, error) {
@@ -82,7 +80,7 @@ func NewCarbonlink(address *string) (*Carbonlink, error) {
 		return nil, err
 	}
 
-	return &Carbonlink{Address: tcpAddress, Conn: conn, mutex: &sync.Mutex{}}, nil
+	return &Carbonlink{Address: tcpAddress, Conn: conn, timeout: 300 * time.Millisecond}, nil
 }
 
 func (cl *Carbonlink) IsValid() bool {
@@ -149,8 +147,6 @@ func (cl *Carbonlink) Close() {
 }
 
 func (cl *Carbonlink) Refresh() {
-	cl.mutex.Lock()
 	cl.Conn.Close()
 	cl.Conn, _ = net.DialTCP("tcp", nil, cl.Address)
-	cl.mutex.Unlock()
 }

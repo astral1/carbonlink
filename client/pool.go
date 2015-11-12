@@ -65,7 +65,7 @@ type CarbonlinkPool struct {
 }
 
 func NewCarbonlinkPool(address string, size int) *CarbonlinkPool {
-	const duration = 10 * time.Second
+	const duration = time.Minute
 	slots := make([]*CarbonlinkSlot, size)
 	empty := NewCarbonlinkPoints(0)
 	queue := lane.NewDeque()
