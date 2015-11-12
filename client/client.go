@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/hydrogen18/stalecucumber"
 )
@@ -70,6 +71,7 @@ func NewCarbonlinkReply() *CarbonlinkReply {
 type Carbonlink struct {
 	Address *net.TCPAddr
 	Conn    *net.TCPConn
+	timeout time.Duration
 	mutex   *sync.Mutex
 }
 
@@ -92,6 +94,10 @@ func (cl *Carbonlink) IsValid() bool {
 	binary.Read(bufferdConn, binary.BigEndian, &replyLength)
 
 	return replyLength != 0
+}
+
+func (cl *Carbonlink) SetTimeout(timeout time.Duration) {
+	cl.timeout = timeout
 }
 
 func (cl *Carbonlink) SendRequest(name *string) {
@@ -121,6 +127,7 @@ func (cl *Carbonlink) GetReply() (*CarbonlinkReply, bool) {
 }
 
 func (cl *Carbonlink) Probe(name string, step int) (*CarbonlinkPoints, bool) {
+	cl.Conn.SetReadDeadline(time.Now().Add(cl.timeout))
 	cl.SendRequest(&name)
 	reply, ok := cl.GetReply()
 

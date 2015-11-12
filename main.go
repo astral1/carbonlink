@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"time"
 
 	carbonlink "github.com/astral1/carbonlink/client"
 )
@@ -14,6 +15,7 @@ func main() {
 	flag.Parse()
 
 	pool := carbonlink.NewCarbonlinkPool(*linkAddress, 12)
+	pool.SetTimeout(300 * time.Millisecond)
 	go pool.Refresh()
 	defer pool.Close()
 	result := pool.Query(*metricName, 60)

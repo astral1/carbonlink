@@ -22,6 +22,10 @@ func NewCarbonlinkSlot(address string, validDuration time.Duration, key int) (*C
 	return &CarbonlinkSlot{connection: conn, lastChecked: time.Now(), validDuration: validDuration, key: key}, nil
 }
 
+func (slot *CarbonlinkSlot) SetTimeout(timeout time.Duration) {
+	slot.connection.SetTimeout(timeout)
+}
+
 func (slot *CarbonlinkSlot) Key() int {
 	return slot.key
 }
@@ -57,6 +61,7 @@ type CarbonlinkPool struct {
 	readyQueue  *lane.Deque
 	mutex       *sync.Mutex
 	refresh     chan *CarbonlinkSlot
+	timeout     time.Duration
 }
 
 func NewCarbonlinkPool(address string, size int) *CarbonlinkPool {
@@ -85,6 +90,12 @@ func (pool *CarbonlinkPool) Refresh() {
 
 		slot.ValidationAndRefresh(false)
 		pool.readyQueue.Append(slot.Key())
+	}
+}
+
+func (pool *CarbonlinkPool) SetTimeout(timeout time.Duration) {
+	for _, slot := range pool.slots {
+		slot.SetTimeout(timeout)
 	}
 }
 
