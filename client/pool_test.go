@@ -3,8 +3,11 @@ package client
 import (
 	"testing"
 	"time"
+
+	"github.com/oleiade/lane"
 )
 
+// Library study test: duration and time
 func TestTimestamp(t *testing.T) {
 	start := time.Now()
 	end := start.Add(300 * time.Millisecond)
@@ -12,6 +15,24 @@ func TestTimestamp(t *testing.T) {
 	duration := end.Sub(start)
 	if duration != 300*time.Millisecond {
 		t.Error("duration must be 300 but that is ", duration)
+	}
+}
+
+// Library study test: duration and time
+func TestLaneQueueEmptyBehavior(t *testing.T) {
+	q := lane.NewQueue()
+
+	ret := q.Dequeue()
+
+	if ret != nil {
+		t.Error("Dequeueing against empty queue is expected to return nil")
+	}
+
+	q.Enqueue(1)
+	ret = q.Dequeue()
+
+	if ret != 1 {
+		t.Error("Dequeued value is expected to 1, but actual value is ", ret)
 	}
 }
 
@@ -28,7 +49,7 @@ func TestRequireValidation(t *testing.T) {
 
 	if slot == nil {
 		t.Skipped()
-	} else if !slot.RequireValidation() {
+	} else if slot.RequireValidation(false) {
 		t.Error("MAYBE failed. if this call is in 15 seconds")
 	}
 }

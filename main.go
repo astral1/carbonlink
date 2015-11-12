@@ -13,19 +13,12 @@ func main() {
 
 	flag.Parse()
 
-	link, err := carbonlink.NewCarbonlink(linkAddress)
-	if err != nil {
-		fmt.Println(err)
-		return
+	pool := carbonlink.NewCarbonlinkPool(*linkAddress, 12)
+	defer pool.Close()
+	for i := 1; i < 20; i++ {
+		result := pool.Query(*metricName, 60)
+
+		fmt.Print("By pool : ")
+		fmt.Println(result)
 	}
-	defer link.Close()
-
-	reply, ok := link.Probe(*metricName, 60)
-
-	if !ok {
-		fmt.Println("link lost")
-		return
-	}
-
-	fmt.Println(reply)
 }
