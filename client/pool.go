@@ -39,12 +39,12 @@ func (slot *CarbonlinkSlot) Query(name string, step int) (*CarbonlinkPoints, boo
 
 func (slot *CarbonlinkSlot) ValidationAndRefresh(force bool) {
 	if force || slot.RequireValidation() {
-		if !slot.connection.IsValid() {
+		if force || !slot.connection.IsValid() {
 			slot.connection.Refresh()
 		}
+		now := time.Now()
+		slot.lastChecked = now
 	}
-	now := time.Now()
-	slot.lastChecked = now
 }
 
 func (slot *CarbonlinkSlot) Close() {
@@ -54,27 +54,38 @@ func (slot *CarbonlinkSlot) Close() {
 type CarbonlinkPool struct {
 	slots       []*CarbonlinkSlot
 	emptyResult *CarbonlinkPoints
-	readyQueue  *lane.Queue
+	readyQueue  *lane.Deque
 	mutex       *sync.Mutex
+	refresh     chan *CarbonlinkSlot
 }
 
 func NewCarbonlinkPool(address string, size int) *CarbonlinkPool {
 	const duration = 10 * time.Second
 	slots := make([]*CarbonlinkSlot, size)
 	empty := NewCarbonlinkPoints(0)
-	queue := lane.NewQueue()
+	queue := lane.NewDeque()
 	mutex := &sync.Mutex{}
-
-	if len(address) == 0 {
-		return &CarbonlinkPool{slots: slots, emptyResult: empty, readyQueue: queue, mutex: mutex}
-	}
+	refresh := make(chan *CarbonlinkSlot, size)
 
 	for index, _ := range slots {
 		slots[index], _ = NewCarbonlinkSlot(address, duration, index)
-		queue.Enqueue(index)
+		queue.Prepend(index)
 	}
 
-	return &CarbonlinkPool{slots: slots, emptyResult: empty, readyQueue: queue, mutex: mutex}
+	return &CarbonlinkPool{slots: slots, emptyResult: empty, readyQueue: queue, mutex: mutex, refresh: refresh}
+}
+
+func (pool *CarbonlinkPool) Refresh() {
+	for {
+		slot := <-pool.refresh
+
+		if slot == nil {
+			return
+		}
+
+		slot.ValidationAndRefresh(false)
+		pool.readyQueue.Append(slot.Key())
+	}
 }
 
 func (pool *CarbonlinkPool) Borrow() *CarbonlinkSlot {
@@ -84,13 +95,19 @@ func (pool *CarbonlinkPool) Borrow() *CarbonlinkSlot {
 		return nil
 	}
 
-	index := pool.readyQueue.Dequeue()
+	index := pool.readyQueue.Pop()
+	slot := pool.slots[index.(int)]
 
-	return pool.slots[index.(int)]
+	if slot.RequireValidation() {
+		pool.refresh <- slot
+		return nil
+	}
+
+	return slot
 }
 
 func (pool *CarbonlinkPool) Return(slot *CarbonlinkSlot) {
-	pool.readyQueue.Enqueue(slot.Key())
+	pool.readyQueue.Prepend(slot.Key())
 }
 
 func (pool *CarbonlinkPool) Query(name string, step int) *CarbonlinkPoints {
@@ -111,6 +128,7 @@ func (pool *CarbonlinkPool) Query(name string, step int) *CarbonlinkPoints {
 }
 
 func (pool *CarbonlinkPool) Close() {
+	pool.refresh <- nil
 	for _, slot := range pool.slots {
 		defer slot.Close()
 	}

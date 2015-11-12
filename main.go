@@ -14,11 +14,10 @@ func main() {
 	flag.Parse()
 
 	pool := carbonlink.NewCarbonlinkPool(*linkAddress, 12)
+	go pool.Refresh()
 	defer pool.Close()
-	for i := 1; i < 20; i++ {
-		result := pool.Query(*metricName, 60)
+	result := pool.Query(*metricName, 60)
 
-		fmt.Print("By pool : ")
-		fmt.Println(result)
-	}
+	fmt.Print("By pool : ")
+	fmt.Println(result)
 }
