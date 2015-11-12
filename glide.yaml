@@ -7,7 +7,7 @@ package: github.com/astral1/carbonlink
 # Declare your project's dependencies.
 import:
   - package: github.com/hydrogen18/stalecucumber
-  - package: github.com/astral1/carbonlink
+  - package: github.com/oleiade/lane
   # Fetch package similar to 'go get':
   #- package: github.com/Masterminds/cookoo
   # Get and manage a package with Git:
