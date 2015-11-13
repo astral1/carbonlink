@@ -33,6 +33,7 @@ func (slot *CarbonlinkSlot) WaitRetry() bool {
 	if slot.retry == 0 {
 		return false
 	}
+	// FIXME: make this value configurable
 	const duration = 150 * time.Millisecond
 	gap := time.Now().Sub(slot.retryStart)
 
@@ -92,6 +93,7 @@ type CarbonlinkPool struct {
 }
 
 func NewCarbonlinkPool(address string, size int) *CarbonlinkPool {
+	// FIXME: make this value configurable
 	const duration = time.Minute
 	slots := make([]*CarbonlinkSlot, size)
 	empty := NewCarbonlinkPoints(0)

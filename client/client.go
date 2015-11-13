@@ -76,12 +76,11 @@ type Carbonlink struct {
 
 func NewCarbonlink(address *string) *Carbonlink {
 	tcpAddress, _ := net.ResolveTCPAddr("tcp", *address)
-	conn, err := net.DialTCP("tcp", nil, tcpAddress)
-	if err != nil {
-		conn = nil
-	}
 
-	return &Carbonlink{Address: tcpAddress, conn: conn, timeout: 300 * time.Millisecond}
+	result := &Carbonlink{Address: tcpAddress, timeout: 300 * time.Millisecond}
+	result.Refresh()
+
+	return result
 }
 
 func (cl *Carbonlink) IsValid() bool {
@@ -154,5 +153,14 @@ func (cl *Carbonlink) Refresh() {
 	if cl.conn != nil {
 		cl.conn.Close()
 	}
-	cl.conn, _ = net.DialTCP("tcp", nil, cl.Address)
+	var err error
+	cl.conn, err = net.DialTCP("tcp", nil, cl.Address)
+	if err != nil {
+		cl.conn = nil
+		return
+	}
+
+	cl.conn.SetNoDelay(true)
+	cl.conn.SetKeepAlive(true)
+	cl.conn.SetKeepAlivePeriod(time.Minute)
 }
