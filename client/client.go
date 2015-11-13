@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
+	"io"
 	"net"
 	"time"
 
@@ -69,29 +70,32 @@ func NewCarbonlinkReply() *CarbonlinkReply {
 
 type Carbonlink struct {
 	Address *net.TCPAddr
-	Conn    *net.TCPConn
+	conn    *net.TCPConn
 	timeout time.Duration
 }
 
-func NewCarbonlink(address *string) (*Carbonlink, error) {
+func NewCarbonlink(address *string) *Carbonlink {
 	tcpAddress, _ := net.ResolveTCPAddr("tcp", *address)
 	conn, err := net.DialTCP("tcp", nil, tcpAddress)
 	if err != nil {
-		return nil, err
+		conn = nil
 	}
 
-	return &Carbonlink{Address: tcpAddress, Conn: conn, timeout: 300 * time.Millisecond}, nil
+	return &Carbonlink{Address: tcpAddress, conn: conn, timeout: 300 * time.Millisecond}
 }
 
 func (cl *Carbonlink) IsValid() bool {
-	testName := ""
-	cl.SendRequest(&testName)
-	var replyLength uint32
-	bufferdConn := bufio.NewReader(cl.Conn)
+	if cl.conn == nil {
+		return false
+	}
+	zero := make([]byte, 0)
+	cl.conn.SetReadDeadline(time.Now())
+	if _, err := cl.conn.Read(zero); err == io.EOF {
+		cl.conn.Close()
+		return false
+	}
 
-	binary.Read(bufferdConn, binary.BigEndian, &replyLength)
-
-	return replyLength != 0
+	return true
 }
 
 func (cl *Carbonlink) SetTimeout(timeout time.Duration) {
@@ -101,17 +105,17 @@ func (cl *Carbonlink) SetTimeout(timeout time.Duration) {
 func (cl *Carbonlink) SendRequest(name *string) {
 	payload := NewCarbonlinkRequest(name)
 
-	cl.Conn.Write(payload.Build())
+	cl.conn.Write(payload.Build())
 }
 
 func (cl *Carbonlink) GetReply() (*CarbonlinkReply, bool) {
 	var replyLength uint32
 	var replyBytes []byte
-	bufferdConn := bufio.NewReader(cl.Conn)
+	bufferdConn := bufio.NewReader(cl.conn)
 
-	binary.Read(bufferdConn, binary.BigEndian, &replyLength)
+	err := binary.Read(bufferdConn, binary.BigEndian, &replyLength)
 
-	if replyLength == 0 {
+	if err != nil {
 		return nil, false
 	}
 
@@ -125,7 +129,10 @@ func (cl *Carbonlink) GetReply() (*CarbonlinkReply, bool) {
 }
 
 func (cl *Carbonlink) Probe(name string, step int) (*CarbonlinkPoints, bool) {
-	cl.Conn.SetReadDeadline(time.Now().Add(cl.timeout))
+	if cl.conn == nil {
+		return nil, false
+	}
+	cl.conn.SetReadDeadline(time.Now().Add(cl.timeout))
 	cl.SendRequest(&name)
 	reply, ok := cl.GetReply()
 
@@ -137,16 +144,15 @@ func (cl *Carbonlink) Probe(name string, step int) (*CarbonlinkPoints, bool) {
 	return points, true
 }
 
-func (cl *Carbonlink) RefreshAndRetry(name string, step int) (*CarbonlinkPoints, bool) {
-	cl.Refresh()
-	return cl.Probe(name, step)
-}
-
 func (cl *Carbonlink) Close() {
-	cl.Conn.Close()
+	if cl.conn != nil {
+		cl.conn.Close()
+	}
 }
 
 func (cl *Carbonlink) Refresh() {
-	cl.Conn.Close()
-	cl.Conn, _ = net.DialTCP("tcp", nil, cl.Address)
+	if cl.conn != nil {
+		cl.conn.Close()
+	}
+	cl.conn, _ = net.DialTCP("tcp", nil, cl.Address)
 }
