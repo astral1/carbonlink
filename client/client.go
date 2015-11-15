@@ -161,6 +161,4 @@ func (cl *Carbonlink) Refresh() {
 	}
 
 	cl.conn.SetNoDelay(true)
-	cl.conn.SetKeepAlive(true)
-	cl.conn.SetKeepAlivePeriod(time.Minute)
 }
