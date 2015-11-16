@@ -36,30 +36,6 @@ func (req *CarbonlinkRequest) Build() []byte {
 	return requestBuf.Bytes()
 }
 
-type CarbonlinkPoints struct {
-	Datapoints map[int]float64
-	From       int
-	Until      int
-	Step       int
-}
-
-func NewCarbonlinkPoints(step int) *CarbonlinkPoints {
-	return &CarbonlinkPoints{Step: step, Datapoints: make(map[int]float64)}
-}
-
-func (p *CarbonlinkPoints) ConvertFrom(reply *CarbonlinkReply) {
-	for index, point := range reply.Datapoints {
-		bucket := (int(point[0].(int64)) / p.Step) * p.Step
-		value := point[1].(float64)
-
-		p.Datapoints[bucket] = value
-		p.Until = bucket
-		if index == 0 {
-			p.From = bucket
-		}
-	}
-}
-
 type CarbonlinkReply struct {
 	Datapoints [][]interface{}
 }
@@ -68,22 +44,22 @@ func NewCarbonlinkReply() *CarbonlinkReply {
 	return &CarbonlinkReply{}
 }
 
-type Carbonlink struct {
+type CarbonlinkConn struct {
 	Address *net.TCPAddr
 	conn    *net.TCPConn
 	timeout time.Duration
 }
 
-func NewCarbonlink(address *string) *Carbonlink {
+func NewCarbonlinkConn(address *string) *CarbonlinkConn {
 	tcpAddress, _ := net.ResolveTCPAddr("tcp", *address)
 
-	result := &Carbonlink{Address: tcpAddress, timeout: 300 * time.Millisecond}
+	result := &CarbonlinkConn{Address: tcpAddress, timeout: 300 * time.Millisecond}
 	result.Refresh()
 
 	return result
 }
 
-func (cl *Carbonlink) IsValid() bool {
+func (cl *CarbonlinkConn) IsValid() bool {
 	if cl.conn == nil {
 		return false
 	}
@@ -97,17 +73,17 @@ func (cl *Carbonlink) IsValid() bool {
 	return true
 }
 
-func (cl *Carbonlink) SetTimeout(timeout time.Duration) {
+func (cl *CarbonlinkConn) SetTimeout(timeout time.Duration) {
 	cl.timeout = timeout
 }
 
-func (cl *Carbonlink) SendRequest(name *string) {
+func (cl *CarbonlinkConn) SendRequest(name *string) {
 	payload := NewCarbonlinkRequest(name)
 
 	cl.conn.Write(payload.Build())
 }
 
-func (cl *Carbonlink) GetReply() (*CarbonlinkReply, bool) {
+func (cl *CarbonlinkConn) GetReply() (*CarbonlinkReply, bool) {
 	var replyLength uint32
 	var replyBytes []byte
 	bufferdConn := bufio.NewReader(cl.conn)
@@ -127,7 +103,7 @@ func (cl *Carbonlink) GetReply() (*CarbonlinkReply, bool) {
 	return reply, true
 }
 
-func (cl *Carbonlink) Probe(name string, step int) (*CarbonlinkPoints, bool) {
+func (cl *CarbonlinkConn) Probe(name string, step int) (*CarbonlinkPoints, bool) {
 	if cl.conn == nil {
 		return nil, false
 	}
@@ -143,13 +119,13 @@ func (cl *Carbonlink) Probe(name string, step int) (*CarbonlinkPoints, bool) {
 	return points, true
 }
 
-func (cl *Carbonlink) Close() {
+func (cl *CarbonlinkConn) Close() {
 	if cl.conn != nil {
 		cl.conn.Close()
 	}
 }
 
-func (cl *Carbonlink) Refresh() {
+func (cl *CarbonlinkConn) Refresh() {
 	if cl.conn != nil {
 		cl.conn.Close()
 	}
