@@ -16,9 +16,10 @@ func main() {
 
 	flag.Parse()
 
-	pool := carbonlink.NewCarbonlinkPool(*linkAddress, 12)
+	var pool carbonlink.Carbonlink
+	pool = carbonlink.NewCarbonlinkPool(*linkAddress, 12)
 	pool.SetTimeout(300 * time.Millisecond)
-	pool.StartMaintenance()
+	pool.Start()
 	defer pool.Close()
 
 	for {

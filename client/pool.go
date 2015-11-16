@@ -17,7 +17,7 @@ type CarbonlinkPool struct {
 	timeout     time.Duration
 }
 
-func NewCarbonlinkPool(address string, size int) *CarbonlinkPool {
+func NewCarbonlinkPool(address string, size int) CarbonlinkPool {
 	// FIXME: make this value configurable
 	const duration = time.Minute
 	slots := make([]*CarbonlinkSlot, size)
@@ -32,10 +32,10 @@ func NewCarbonlinkPool(address string, size int) *CarbonlinkPool {
 		queue.Prepend(index)
 	}
 
-	return &CarbonlinkPool{slots: slots, emptyResult: empty, readyQueue: queue, mutex: mutex, refresh: refresh, reconnect: reconnect}
+	return CarbonlinkPool{slots: slots, emptyResult: empty, readyQueue: queue, mutex: mutex, refresh: refresh, reconnect: reconnect}
 }
 
-func (pool *CarbonlinkPool) Refresh() {
+func (pool CarbonlinkPool) Refresh() {
 	for {
 		slot := <-pool.refresh
 
@@ -53,7 +53,7 @@ func (pool *CarbonlinkPool) Refresh() {
 	}
 }
 
-func (pool *CarbonlinkPool) Reconnect() {
+func (pool CarbonlinkPool) Reconnect() {
 	for {
 		slot := <-pool.reconnect
 
@@ -78,18 +78,18 @@ func (pool *CarbonlinkPool) Reconnect() {
 	}
 }
 
-func (pool *CarbonlinkPool) StartMaintenance() {
+func (pool CarbonlinkPool) Start() {
 	go pool.Refresh()
 	go pool.Reconnect()
 }
 
-func (pool *CarbonlinkPool) SetTimeout(timeout time.Duration) {
+func (pool CarbonlinkPool) SetTimeout(timeout time.Duration) {
 	for _, slot := range pool.slots {
 		slot.SetTimeout(timeout)
 	}
 }
 
-func (pool *CarbonlinkPool) Borrow() *CarbonlinkSlot {
+func (pool CarbonlinkPool) Borrow() *CarbonlinkSlot {
 	pool.mutex.Lock()
 	defer pool.mutex.Unlock()
 	for {
@@ -109,11 +109,11 @@ func (pool *CarbonlinkPool) Borrow() *CarbonlinkSlot {
 	}
 }
 
-func (pool *CarbonlinkPool) Return(slot *CarbonlinkSlot) {
+func (pool CarbonlinkPool) Return(slot *CarbonlinkSlot) {
 	pool.readyQueue.Prepend(slot.Key())
 }
 
-func (pool *CarbonlinkPool) Query(name string, step int) *CarbonlinkPoints {
+func (pool CarbonlinkPool) Query(name string, step int) *CarbonlinkPoints {
 	slot := pool.Borrow()
 	if slot == nil {
 		return pool.emptyResult
@@ -129,7 +129,7 @@ func (pool *CarbonlinkPool) Query(name string, step int) *CarbonlinkPoints {
 	return result
 }
 
-func (pool *CarbonlinkPool) Close() {
+func (pool CarbonlinkPool) Close() {
 	pool.refresh <- nil
 	pool.reconnect <- nil
 	for _, slot := range pool.slots {
