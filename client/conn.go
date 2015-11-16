@@ -2,54 +2,20 @@ package client
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/binary"
 	"io"
 	"net"
 	"time"
-
-	"github.com/hydrogen18/stalecucumber"
 )
 
-type CarbonlinkRequest struct {
-	Type   string
-	Metric string
-}
-
-func NewEmptyCarbonlinkRequest() *CarbonlinkRequest {
-	return &CarbonlinkRequest{}
-}
-
-func NewCarbonlinkRequest(metricName *string) *CarbonlinkRequest {
-	return &CarbonlinkRequest{Type: "cache-query", Metric: *metricName}
-}
-
-func (req *CarbonlinkRequest) Build() []byte {
-	requestBuf := new(bytes.Buffer)
-	payloadBuf := new(bytes.Buffer)
-
-	stalecucumber.NewPickler(payloadBuf).Pickle(req)
-
-	binary.Write(requestBuf, binary.BigEndian, uint32(payloadBuf.Len()))
-	binary.Write(requestBuf, binary.BigEndian, payloadBuf.Bytes())
-
-	return requestBuf.Bytes()
-}
-
-type CarbonlinkReply struct {
-	Datapoints [][]interface{}
-}
-
-func NewCarbonlinkReply() *CarbonlinkReply {
-	return &CarbonlinkReply{}
-}
-
+// TCP Connection wrapper for carbonlink
 type CarbonlinkConn struct {
 	Address *net.TCPAddr
 	conn    *net.TCPConn
 	timeout time.Duration
 }
 
+// Create new connection
 func NewCarbonlinkConn(address *string) *CarbonlinkConn {
 	tcpAddress, _ := net.ResolveTCPAddr("tcp", *address)
 
@@ -59,6 +25,7 @@ func NewCarbonlinkConn(address *string) *CarbonlinkConn {
 	return result
 }
 
+// Detect disconnected connection
 func (cl *CarbonlinkConn) IsValid() bool {
 	if cl.conn == nil {
 		return false
@@ -73,17 +40,18 @@ func (cl *CarbonlinkConn) IsValid() bool {
 	return true
 }
 
+// Set timeout
 func (cl *CarbonlinkConn) SetTimeout(timeout time.Duration) {
 	cl.timeout = timeout
 }
 
-func (cl *CarbonlinkConn) SendRequest(name *string) {
+func (cl *CarbonlinkConn) sendRequest(name *string) {
 	payload := NewCarbonlinkRequest(name)
 
 	cl.conn.Write(payload.Build())
 }
 
-func (cl *CarbonlinkConn) GetReply() (*CarbonlinkReply, bool) {
+func (cl *CarbonlinkConn) getReply() (*CarbonlinkReply, bool) {
 	var replyLength uint32
 	var replyBytes []byte
 	bufferdConn := bufio.NewReader(cl.conn)
@@ -98,18 +66,19 @@ func (cl *CarbonlinkConn) GetReply() (*CarbonlinkReply, bool) {
 	binary.Read(bufferdConn, binary.BigEndian, replyBytes)
 
 	reply := NewCarbonlinkReply()
-	stalecucumber.UnpackInto(reply).From(stalecucumber.Unpickle(bytes.NewReader(replyBytes)))
+	reply.LoadBytes(replyBytes)
 
 	return reply, true
 }
 
+// Query metric data with step from carbonlink
 func (cl *CarbonlinkConn) Probe(name string, step int) (*CarbonlinkPoints, bool) {
 	if cl.conn == nil {
 		return nil, false
 	}
 	cl.conn.SetReadDeadline(time.Now().Add(cl.timeout))
-	cl.SendRequest(&name)
-	reply, ok := cl.GetReply()
+	cl.sendRequest(&name)
+	reply, ok := cl.getReply()
 
 	if !ok {
 		return nil, false
@@ -119,12 +88,14 @@ func (cl *CarbonlinkConn) Probe(name string, step int) (*CarbonlinkPoints, bool)
 	return points, true
 }
 
+// Close connection
 func (cl *CarbonlinkConn) Close() {
 	if cl.conn != nil {
 		cl.conn.Close()
 	}
 }
 
+// Reconnect insanity connection
 func (cl *CarbonlinkConn) Refresh() {
 	if cl.conn != nil {
 		cl.conn.Close()
