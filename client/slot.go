@@ -13,7 +13,7 @@ type carbonlinkSlot struct {
 	key           int
 }
 
-func NewcarbonlinkSlot(address string, validDuration time.Duration, key int) *carbonlinkSlot {
+func newCarbonlinkSlot(address string, validDuration time.Duration, key int) *carbonlinkSlot {
 	conn := NewCarbonlinkConn(&address)
 	return &carbonlinkSlot{connection: conn, lastChecked: time.Now(), validDuration: validDuration, key: key}
 }
