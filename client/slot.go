@@ -5,17 +5,18 @@ import (
 )
 
 type carbonlinkSlot struct {
-	connection    *CarbonlinkConn
-	lastChecked   time.Time
-	validDuration time.Duration
-	retry         int
-	retryStart    time.Time
-	key           int
+	connection        *CarbonlinkConn
+	lastChecked       time.Time
+	validDuration     time.Duration
+	retry             int
+	retryStart        time.Time
+	retryBaseInterval time.Duration
+	key               int
 }
 
 func newCarbonlinkSlot(address string, validDuration time.Duration, key int) *carbonlinkSlot {
 	conn := NewCarbonlinkConn(&address)
-	return &carbonlinkSlot{connection: conn, lastChecked: time.Now(), validDuration: validDuration, key: key}
+	return &carbonlinkSlot{connection: conn, lastChecked: time.Now(), validDuration: validDuration, key: key, retryBaseInterval: 150 * time.Millisecond}
 }
 
 func (slot *carbonlinkSlot) SetTimeout(timeout time.Duration) {
@@ -26,15 +27,17 @@ func (slot *carbonlinkSlot) Key() int {
 	return slot.key
 }
 
+func (slot *carbonlinkSlot) SetBaseRetryInterval(interval time.Duration) {
+	slot.retryBaseInterval = interval
+}
+
 func (slot *carbonlinkSlot) WaitRetry() bool {
 	if slot.retry == 0 {
 		return false
 	}
-	// FIXME: make this value configurable
-	const duration = 150 * time.Millisecond
 	gap := time.Now().Sub(slot.retryStart)
 
-	weightedWait := time.Duration(slot.retry) * duration
+	weightedWait := time.Duration(slot.retry) * slot.retryBaseInterval
 
 	return gap < weightedWait
 }
