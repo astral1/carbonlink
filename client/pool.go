@@ -100,7 +100,7 @@ func (pool CarbonlinkPool) SetBaseRetryInterval(interval time.Duration) {
 	}
 }
 
-// Set retry connect interval. default is 300 ms
+// Set test interval for carbonlink connection. default is a minute.
 func (pool CarbonlinkPool) SetTestInterval(interval time.Duration) {
 	for _, slot := range pool.slots {
 		slot.SetValidDuration(interval)
