@@ -27,6 +27,10 @@ func (slot *carbonlinkSlot) Key() int {
 	return slot.key
 }
 
+func (slot *carbonlinkSlot) SetValidDuration(interval time.Duration) {
+	slot.validDuration = interval
+}
+
 func (slot *carbonlinkSlot) SetBaseRetryInterval(interval time.Duration) {
 	slot.retryBaseInterval = interval
 }

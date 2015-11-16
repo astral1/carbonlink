@@ -20,6 +20,7 @@ func main() {
 	pool = carbonlink.NewCarbonlinkPool(*linkAddress, 12)
 	pool.SetTimeout(300 * time.Millisecond)
 	pool.(carbonlink.CarbonlinkPool).SetBaseRetryInterval(500 * time.Millisecond)
+	pool.(carbonlink.CarbonlinkPool).SetTestInterval(5 * time.Minute)
 	pool.Start()
 	defer pool.Close()
 

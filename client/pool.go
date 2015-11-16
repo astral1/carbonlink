@@ -30,7 +30,7 @@ func NewCarbonlinkPool(address string, size int) CarbonlinkPool {
 	reconnect := make(chan *carbonlinkSlot, size)
 
 	for index, _ := range slots {
-		slots[index] = newCarbonlinkSlot(address, duration, index)
+		slots[index] = newCarbonlinkSlot(address, time.Minute, index)
 		queue.Prepend(index)
 	}
 
@@ -97,6 +97,13 @@ func (pool CarbonlinkPool) SetTimeout(timeout time.Duration) {
 func (pool CarbonlinkPool) SetBaseRetryInterval(interval time.Duration) {
 	for _, slot := range pool.slots {
 		slot.SetBaseRetryInterval(interval)
+	}
+}
+
+// Set retry connect interval. default is 300 ms
+func (pool CarbonlinkPool) SetTestInterval(interval time.Duration) {
+	for _, slot := range pool.slots {
+		slot.SetValidDuration(interval)
 	}
 }
 
