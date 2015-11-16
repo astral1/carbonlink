@@ -16,7 +16,7 @@ type carbonlinkSlot struct {
 
 func newCarbonlinkSlot(address string, validDuration time.Duration, key int) *carbonlinkSlot {
 	conn := NewCarbonlinkConn(&address)
-	return &carbonlinkSlot{connection: conn, lastChecked: time.Now(), validDuration: validDuration, key: key, retryBaseInterval: 150 * time.Millisecond}
+	return &carbonlinkSlot{connection: conn, lastChecked: time.Now(), validDuration: validDuration, key: key, retryBaseInterval: 500 * time.Millisecond}
 }
 
 func (slot *carbonlinkSlot) SetTimeout(timeout time.Duration) {

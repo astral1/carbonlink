@@ -21,7 +21,7 @@ type CarbonlinkPool struct {
 // Create a new carbonlink connection pool.
 func NewCarbonlinkPool(address string, size int) CarbonlinkPool {
 	// FIXME: make this value configurable
-	const duration = time.Minute
+	const duration = 5 * time.Minute
 	slots := make([]*carbonlinkSlot, size)
 	empty := NewCarbonlinkPoints(0)
 	queue := lane.NewDeque()
@@ -93,14 +93,14 @@ func (pool CarbonlinkPool) SetTimeout(timeout time.Duration) {
 	}
 }
 
-// Set retry connect interval. default is 300 ms
+// Set retry connect interval. default is 500 ms
 func (pool CarbonlinkPool) SetBaseRetryInterval(interval time.Duration) {
 	for _, slot := range pool.slots {
 		slot.SetBaseRetryInterval(interval)
 	}
 }
 
-// Set test interval for carbonlink connection. default is a minute.
+// Set test interval for carbonlink connection. default is 5 minute.
 func (pool CarbonlinkPool) SetTestInterval(interval time.Duration) {
 	for _, slot := range pool.slots {
 		slot.SetValidDuration(interval)
