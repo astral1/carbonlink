@@ -9,12 +9,12 @@ import (
 
 // Carbonlink Connection Pool
 type CarbonlinkPool struct {
-	slots       []*CarbonlinkSlot
+	slots       []*carbonlinkSlot
 	emptyResult *CarbonlinkPoints
 	readyQueue  *lane.Deque
 	mutex       *sync.Mutex
-	refresh     chan *CarbonlinkSlot
-	reconnect   chan *CarbonlinkSlot
+	refresh     chan *carbonlinkSlot
+	reconnect   chan *carbonlinkSlot
 	timeout     time.Duration
 }
 
@@ -22,15 +22,15 @@ type CarbonlinkPool struct {
 func NewCarbonlinkPool(address string, size int) CarbonlinkPool {
 	// FIXME: make this value configurable
 	const duration = time.Minute
-	slots := make([]*CarbonlinkSlot, size)
+	slots := make([]*carbonlinkSlot, size)
 	empty := NewCarbonlinkPoints(0)
 	queue := lane.NewDeque()
 	mutex := &sync.Mutex{}
-	refresh := make(chan *CarbonlinkSlot, size)
-	reconnect := make(chan *CarbonlinkSlot, size)
+	refresh := make(chan *carbonlinkSlot, size)
+	reconnect := make(chan *carbonlinkSlot, size)
 
 	for index, _ := range slots {
-		slots[index] = NewCarbonlinkSlot(address, duration, index)
+		slots[index] = NewcarbonlinkSlot(address, duration, index)
 		queue.Prepend(index)
 	}
 
@@ -93,7 +93,7 @@ func (pool CarbonlinkPool) SetTimeout(timeout time.Duration) {
 	}
 }
 
-func (pool CarbonlinkPool) borrowSlot() *CarbonlinkSlot {
+func (pool CarbonlinkPool) borrowSlot() *carbonlinkSlot {
 	pool.mutex.Lock()
 	defer pool.mutex.Unlock()
 	for {
@@ -113,7 +113,7 @@ func (pool CarbonlinkPool) borrowSlot() *CarbonlinkSlot {
 	}
 }
 
-func (pool CarbonlinkPool) returnSlot(slot *CarbonlinkSlot) {
+func (pool CarbonlinkPool) returnSlot(slot *carbonlinkSlot) {
 	pool.readyQueue.Prepend(slot.Key())
 }
 

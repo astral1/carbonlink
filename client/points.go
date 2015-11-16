@@ -1,16 +1,23 @@
 package client
 
+// Represent summerized cached results for a metric
 type CarbonlinkPoints struct {
+	// Result datapoints
 	Datapoints map[int]float64
-	From       int
-	Until      int
-	Step       int
+	// Result start from
+	From int
+	// Result finish until
+	Until int
+	// Interval for summarize
+	Step int
 }
 
+// Create a empty points
 func NewCarbonlinkPoints(step int) *CarbonlinkPoints {
 	return &CarbonlinkPoints{Step: step, Datapoints: make(map[int]float64)}
 }
 
+// Convert from response of carbonlink to points
 func (p *CarbonlinkPoints) ConvertFrom(reply *CarbonlinkReply) {
 	for index, point := range reply.Datapoints {
 		bucket := (int(point[0].(int64)) / p.Step) * p.Step
