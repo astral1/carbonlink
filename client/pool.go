@@ -7,6 +7,7 @@ import (
 	"github.com/oleiade/lane"
 )
 
+// Carbonlink Connection Pool
 type CarbonlinkPool struct {
 	slots       []*CarbonlinkSlot
 	emptyResult *CarbonlinkPoints
@@ -17,6 +18,7 @@ type CarbonlinkPool struct {
 	timeout     time.Duration
 }
 
+// Create a new carbonlink connection pool.
 func NewCarbonlinkPool(address string, size int) CarbonlinkPool {
 	// FIXME: make this value configurable
 	const duration = time.Minute
@@ -35,7 +37,7 @@ func NewCarbonlinkPool(address string, size int) CarbonlinkPool {
 	return CarbonlinkPool{slots: slots, emptyResult: empty, readyQueue: queue, mutex: mutex, refresh: refresh, reconnect: reconnect}
 }
 
-func (pool CarbonlinkPool) Refresh() {
+func (pool CarbonlinkPool) runRefresh() {
 	for {
 		slot := <-pool.refresh
 
@@ -53,7 +55,7 @@ func (pool CarbonlinkPool) Refresh() {
 	}
 }
 
-func (pool CarbonlinkPool) Reconnect() {
+func (pool CarbonlinkPool) runReconnect() {
 	for {
 		slot := <-pool.reconnect
 
@@ -74,22 +76,24 @@ func (pool CarbonlinkPool) Reconnect() {
 		}
 
 		slot.ResetRetry()
-		pool.Return(slot)
+		pool.returnSlot(slot)
 	}
 }
 
+// Run connection test and refresh goroutine and reconnect handling goroutine
 func (pool CarbonlinkPool) Start() {
-	go pool.Refresh()
-	go pool.Reconnect()
+	go pool.runRefresh()
+	go pool.runReconnect()
 }
 
+// Set read timeout
 func (pool CarbonlinkPool) SetTimeout(timeout time.Duration) {
 	for _, slot := range pool.slots {
 		slot.SetTimeout(timeout)
 	}
 }
 
-func (pool CarbonlinkPool) Borrow() *CarbonlinkSlot {
+func (pool CarbonlinkPool) borrowSlot() *CarbonlinkSlot {
 	pool.mutex.Lock()
 	defer pool.mutex.Unlock()
 	for {
@@ -109,12 +113,14 @@ func (pool CarbonlinkPool) Borrow() *CarbonlinkSlot {
 	}
 }
 
-func (pool CarbonlinkPool) Return(slot *CarbonlinkSlot) {
+func (pool CarbonlinkPool) returnSlot(slot *CarbonlinkSlot) {
 	pool.readyQueue.Prepend(slot.Key())
 }
 
+// Query a metric to carbonlink with fixed step.
+// DO NOT expand glob and regex
 func (pool CarbonlinkPool) Query(name string, step int) *CarbonlinkPoints {
-	slot := pool.Borrow()
+	slot := pool.borrowSlot()
 	if slot == nil {
 		return pool.emptyResult
 	}
@@ -125,10 +131,12 @@ func (pool CarbonlinkPool) Query(name string, step int) *CarbonlinkPoints {
 		return pool.emptyResult
 	}
 
-	pool.Return(slot)
+	pool.returnSlot(slot)
 	return result
 }
 
+// Close carbonlink connection pool.
+// And finalize goroutines for maintenance
 func (pool CarbonlinkPool) Close() {
 	pool.refresh <- nil
 	pool.reconnect <- nil
