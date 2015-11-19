@@ -24,8 +24,10 @@ func (p *CarbonlinkPoints) ConvertFrom(reply *CarbonlinkReply) {
 		value := point[1].(float64)
 
 		p.Datapoints[bucket] = value
-		p.Until = bucket
-		if index == 0 {
+		if p.Until < bucket {
+			p.Until = bucket
+		}
+		if index == 0 || p.From > bucket {
 			p.From = bucket
 		}
 	}
